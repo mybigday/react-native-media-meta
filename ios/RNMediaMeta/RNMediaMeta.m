@@ -47,7 +47,8 @@ RCT_EXPORT_METHOD(get:(NSString *)path
   }
   
   NSMutableDictionary *result = [NSMutableDictionary new];
-  AVURLAsset *asset = [AVURLAsset URLAssetWithURL:[NSURL fileURLWithPath:path] options:nil];
+  NSDictionary *options = @{AVURLAssetPreferPreciseDurationAndTimingKey: @YES};
+  AVURLAsset *asset = [AVURLAsset URLAssetWithURL:[NSURL fileURLWithPath:path] options:options];
   
   NSArray *keys = [NSArray arrayWithObjects:@"commonMetadata", nil];
   [asset loadValuesAsynchronouslyForKeys:keys completionHandler:^{
@@ -86,7 +87,7 @@ RCT_EXPORT_METHOD(get:(NSString *)path
     if (thumbnail) {
       [result setObject:@(thumbnail.size.width) forKey:@"width"];
       [result setObject:@(thumbnail.size.height) forKey:@"height"];
-      [result setObject:@([asset duration].value) forKey:@"duration"];
+      [result setObject:@((CMTimeGetSeconds(asset.duration) * 1000)) forKey:@"duration"];
       
       NSString *data = [UIImagePNGRepresentation(thumbnail) base64EncodedStringWithOptions:NSDataBase64Encoding64CharacterLineLength];
       [result setObject:data

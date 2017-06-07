@@ -16,9 +16,10 @@ import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.WritableMap;
 
+import org.json.JSONObject;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileNotFoundException;
+
 
 public class RNMediaMeta extends ReactContextBaseJavaModule {
   private Context context;
@@ -78,7 +79,18 @@ public class RNMediaMeta extends ReactContextBaseJavaModule {
     if (value != null) map.putString(key, value);
   }
 
-  private void getMetadata(String path, Promise promise) {
+  private void getMetadata(String pathOrJSONString, Promise promise) {
+    String path;
+    Boolean getBitmap = true;
+
+    try {
+      JSONObject obj = new JSONObject(pathOrJSONString);
+      path = obj.get("path").toString();
+      getBitmap = obj.optBoolean("getBitmap", getBitmap); // as with path, nonJSON, default true
+    } catch(Exception e) {
+      path = pathOrJSONString;
+    }
+
     File f = new File(path);
     if (!f.exists() || f.isDirectory()) {
       promise.reject("-15", "file not found");
@@ -93,47 +105,55 @@ public class RNMediaMeta extends ReactContextBaseJavaModule {
       // check is media
       String audioCodec = mmr.extractMetadata(FFmpegMediaMetadataRetriever.METADATA_KEY_AUDIO_CODEC);
       String videoCodec = mmr.extractMetadata(FFmpegMediaMetadataRetriever.METADATA_KEY_VIDEO_CODEC);
+
       if (audioCodec == null && videoCodec == null) {
         promise.resolve(result);
         mmr.release();
         return;
       }
 
-      // get all metadata
+      // Video Values
+      // String rotation = mmr.extractMetadata(FFmpegMediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION);
+
+      // get all metadata - TODO :: Loop through only values for audio or video metadata based on media type for a small performance boost
       for (String meta: metadatas) {
         putString(result, meta, mmr.extractMetadata(meta));
       }
 
-      // get thumb
-      Bitmap bmp = mmr.getFrameAtTime();
-      if (bmp != null) {
-        // Bitmap bmp2 = mmr.getFrameAtTime((long) 4E6, FFmpegMediaMetadataRetriever.OPTION_CLOSEST);
-        // if (bmp2 != null) bmp = bmp2;
-
-        /*
-         * The image returned seems to be always in landscape mode and does not follow
-         * the rotation of the video.
-         * get the rotation from the metadata and apply the correction so the image is straight.
-         */
-        String rotation = mmr.extractMetadata(FFmpegMediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION);
-        String createTime = mmr.extractMetadata(FFmpegMediaMetadataRetriever.METADATA_KEY_CREATION_TIME);
-        String duration = mmr.extractMetadata(FFmpegMediaMetadataRetriever.METADATA_KEY_DURATION);
-
-        if (rotation != null)  {
-          Bitmap rotatedBmp = RotateBitmap(bmp, Float.parseFloat(rotation));
-          if (rotatedBmp != null) {
-            bmp = rotatedBmp;
-          }
-        }
-
-        byte[] bytes = convertToBytes(bmp);
-        result.putInt("width", bmp.getWidth());
-        result.putInt("height", bmp.getHeight());
-        result.putString("thumb", convertToBase64(bytes));
-        result.putString("rotation", rotation);
-        result.putString("createTime", createTime);
-        result.putString("duration", duration);
+      if(result.hasKey("framerate") && !result.hasKey("rotation")) {
+        putString(result, "rotation", mmr.extractMetadata(FFmpegMediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION));
       }
+
+      // Legacy support & camelCase
+      result.putString("createTime", result.getString("creation_time"));
+
+      if(getBitmap) {
+        // get thumb
+        Bitmap bmp = mmr.getFrameAtTime();
+        if (bmp != null) {
+          // Bitmap bmp2 = mmr.getFrameAtTime((long) 4E6, FFmpegMediaMetadataRetriever.OPTION_CLOSEST);
+          // if (bmp2 != null) bmp = bmp2;
+
+          /*
+          * The image returned seems to be always in landscape mode and does not follow
+          * the rotation of the video.
+          * get the rotation from the metadata and apply the correction so the image is straight.
+          */
+
+          if (result.hasKey("rotation")) {
+           Bitmap rotatedBmp = RotateBitmap(bmp, Float.parseFloat(result.getString("rotation")));
+           if (rotatedBmp != null) {
+             bmp = rotatedBmp;
+           }
+          }
+
+          byte[] bytes = convertToBytes(bmp);
+          result.putInt("width", bmp.getWidth());
+          result.putInt("height", bmp.getHeight());
+          result.putString("thumb", convertToBase64(bytes));
+        }
+      }
+
     } catch(Exception e) {
       e.printStackTrace();
     } finally {
@@ -150,11 +170,12 @@ public class RNMediaMeta extends ReactContextBaseJavaModule {
   }
 
   @ReactMethod
-  public void get(final String path, final Promise promise) {
+  public void get(final String pathORJSONString, final Promise promise) {
+
     new Thread() {
       @Override
       public void run() {
-        getMetadata(path, promise);
+        getMetadata(pathORJSONString, promise);
       }
     }.start();
   }

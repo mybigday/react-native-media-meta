@@ -8,7 +8,7 @@
   "dependencies": {
     "react": "15.3.2",
     "react-native": "0.35.0",
-    "react-native-fs": "^2.0.1-rc.2",
+    "react-native-fs": "2.0.1-rc.2",
     "react-native-media-meta": "*"
   }
 }

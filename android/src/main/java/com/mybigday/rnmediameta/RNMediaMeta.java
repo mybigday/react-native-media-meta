@@ -7,16 +7,15 @@ import android.util.Base64;
 import android.graphics.Matrix;
 
 import com.facebook.react.bridge.Arguments;
-import com.facebook.react.bridge.NativeModule;
+// import com.facebook.react.bridge.NativeModule;
 import com.facebook.react.bridge.ReactApplicationContext;
-import com.facebook.react.bridge.ReactContext;
+// import com.facebook.react.bridge.ReactContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.WritableMap;
 
-import org.json.JSONObject;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 
@@ -79,17 +78,9 @@ public class RNMediaMeta extends ReactContextBaseJavaModule {
     if (value != null) map.putString(key, value);
   }
 
-  private void getMetadata(String pathOrJSONString, Promise promise) {
-    String path;
-    Boolean getBitmap = true;
+  private void getMetadata(String path, ReadableMap options, Promise promise) {
+    Boolean getBitmap = options.hasKey("getThumb") ? options.getBoolean("getThumb") : true;
 
-    try {
-      JSONObject obj = new JSONObject(pathOrJSONString);
-      path = obj.get("path").toString();
-      getBitmap = obj.optBoolean("getBitmap", getBitmap); // as with path, nonJSON, default true
-    } catch(Exception e) {
-      path = pathOrJSONString;
-    }
 
     File f = new File(path);
     if (!f.exists() || f.isDirectory()) {
@@ -111,9 +102,6 @@ public class RNMediaMeta extends ReactContextBaseJavaModule {
         mmr.release();
         return;
       }
-
-      // Video Values
-      // String rotation = mmr.extractMetadata(FFmpegMediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION);
 
       // get all metadata - TODO :: Loop through only values for audio or video metadata based on media type for a small performance boost
       for (String meta: metadatas) {
@@ -169,13 +157,14 @@ public class RNMediaMeta extends ReactContextBaseJavaModule {
       return Bitmap.createBitmap(source, 0, 0, source.getWidth(), source.getHeight(), matrix, true);
   }
 
+
   @ReactMethod
-  public void get(final String pathORJSONString, final Promise promise) {
+  public void get(final String path, final ReadableMap options, final Promise promise) {
 
     new Thread() {
       @Override
       public void run() {
-        getMetadata(pathORJSONString, promise);
+        getMetadata(path, options, promise);
       }
     }.start();
   }

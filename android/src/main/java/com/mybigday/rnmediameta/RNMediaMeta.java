@@ -110,7 +110,11 @@ public class RNMediaMeta extends ReactContextBaseJavaModule {
       }
 
       // Legacy support & camelCase
-      result.putString("createTime", result.getString("creation_time"));
+      // Only get the createTime if it exists.
+      // Otherwise an exception is thrown and thumb is never generated
+      if (result.hasKey("createTime")) {
+        result.putString("createTime", result.getString("creation_time"));
+      }
 
       if (options.getBoolean("getThumb")) {
         // get thumb

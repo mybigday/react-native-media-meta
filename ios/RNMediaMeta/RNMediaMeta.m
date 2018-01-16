@@ -83,7 +83,8 @@ RCT_EXPORT_METHOD(get:(NSString *)path
       // video frame thumb
       AVAssetImageGenerator *imageGenerator = [[AVAssetImageGenerator alloc]initWithAsset:asset];
       imageGenerator.appliesPreferredTrackTransform = YES;
-      CMTime time = CMTimeMake(0, 600);
+      CMTime duration = [asset duration];
+      CMTime time = CMTimeMake(duration.value / 2, duration.timescale);
 
       CGImageRef imageRef = [imageGenerator copyCGImageAtTime:time actualTime:NULL error:NULL];
       thumbnail = [UIImage imageWithCGImage:imageRef];

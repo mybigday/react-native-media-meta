@@ -61,7 +61,8 @@ public class RNMediaMeta extends ReactContextBaseJavaModule {
     "title",
     "date",
     "duration",
-    "rotation"
+    "rotation",
+    "location"
   };
 
   private String convertToBase64(byte[] bytes) {
